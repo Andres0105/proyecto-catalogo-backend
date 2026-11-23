@@ -43,19 +43,25 @@ def query_database_agent(query_text: str, db: Session) -> Tuple[str, List[models
                 "sql_query": "SELECT * FROM products WHERE ..."
             }}
             """
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            req_data = json.dumps({
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"response_mime_type": "application/json"}
-            }).encode('utf-8')
-            req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                result = json.loads(resp.read().decode('utf-8'))
-                raw_text = result["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = json.loads(raw_text)
-                matched_ids = parsed.get("matched_ids", [])
-                matched_prods = [p for p in all_products if p.id in matched_ids]
-                return parsed.get("answer", ""), matched_prods, parsed.get("sql_query", "SELECT * FROM products")
+            # Probamos con el modelo más rápido y actualizado de Google Gemini
+            for model_name in ["gemini-3-flash-preview", "gemini-2.5-flash-lite", "gemini-3.8-flash"]:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                req_data = json.dumps({
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"response_mime_type": "application/json"}
+                }).encode('utf-8')
+                req = urllib.request.Request(url, data=req_data, headers={"Content-Type": "application/json"})
+                try:
+                    with urllib.request.urlopen(req, timeout=12) as resp:
+                        result = json.loads(resp.read().decode('utf-8'))
+                        raw_text = result["candidates"][0]["content"]["parts"][0]["text"]
+                        parsed = json.loads(raw_text)
+                        matched_ids = parsed.get("matched_ids", [])
+                        matched_prods = [p for p in all_products if p.id in matched_ids]
+                        return parsed.get("answer", ""), matched_prods, parsed.get("sql_query", "SELECT * FROM products")
+                except Exception as model_err:
+                    print(f"Model {model_name} error: {model_err}")
+                    continue
         except Exception as e:
             print(f"Gemini API fallback to internal agent: {e}")
 
