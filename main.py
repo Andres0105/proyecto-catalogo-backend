@@ -7,6 +7,7 @@ from typing import List
 
 import models
 import schemas
+import agent
 from database import engine, get_db
 
 # Crea la tabla en Supabase automáticamente si aún no existe
@@ -53,3 +54,13 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
             print("Error enviando alerta a Slack:", e)
 
     return nuevo_producto
+
+# 3. Agente de IA para Consultas en Lenguaje Natural a la Base de Datos
+@app.post("/api/v1/agent/query", response_model=schemas.AgentQueryResponse, tags=["Agente IA"])
+def ask_ai_agent(request: schemas.AgentQueryRequest, db: Session = Depends(get_db)):
+    answer, products, sql = agent.query_database_agent(request.query, db)
+    return schemas.AgentQueryResponse(
+        answer=answer,
+        matched_products=products,
+        sql_action=sql
+    )

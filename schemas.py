@@ -17,3 +17,12 @@ class ProductResponse(ProductBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+# Esquemas para el Agente de IA que consulta la Base de Datos
+class AgentQueryRequest(BaseModel):
+    query: str
+
+class AgentQueryResponse(BaseModel):
+    answer: str
+    matched_products: list[ProductResponse] = []
+    sql_action: Optional[str] = None
